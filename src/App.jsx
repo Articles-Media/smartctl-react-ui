@@ -4,6 +4,7 @@ import ContextMenuCommandsInstaller from './components/ContextMenuCommandsInstal
 import ConfigEditor from './components/ConfigEditor'
 import useSmartctlReactStore from './hooks/useSmartctlReactStore'
 import AutoStart from './components/AutoStart'
+import SmartctlPanel from './components/SmartctlPanel'
 
 export default function App() {
 
@@ -58,6 +59,8 @@ export default function App() {
                 <>
 
                     <AutoStart />
+
+                    <SmartctlPanel />
 
                     <ConfigEditor
                         content={content}

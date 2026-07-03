@@ -1,126 +1,21 @@
 const express = require('express')
 const fs = require('fs').promises
-const fsSync = require('fs')
 const path = require('path')
 const cors = require('cors')
-const os = require('os');
-const { execSync, execFileSync, exec } = require('child_process')
 
 const app = express()
 app.use(cors())
 app.use(express.json())
 
+const startupRouter = require('./routes/startup')
+app.use('/api', startupRouter)
+
+const smartctlRouter = require('./routes/smartctl')
+app.use('/api', smartctlRouter)
 
 const rootPath = path.join(__dirname, '..')
 const configPath = path.join(__dirname, 'config.js')
 const contextMenuPath = path.join(__dirname, '..', 'context-menu')
-
-// Serve extension static files (icons etc.) when requested via URL.
-// For extensions outside this folder, icon data URLs are returned directly in the API response.
-app.use('/extensions', express.static(path.join(rootPath, 'extensions')))
-
-const mimeTypes = {
-    '.ico': 'image/x-icon',
-    '.png': 'image/png',
-    '.jpg': 'image/jpeg',
-    '.jpeg': 'image/jpeg',
-    '.gif': 'image/gif',
-    '.svg': 'image/svg+xml',
-    '.webp': 'image/webp'
-}
-
-function fileToDataUrl(filePath, buffer) {
-    const ext = path.extname(filePath).toLowerCase()
-    const mime = mimeTypes[ext] || 'application/octet-stream'
-    return `data:${mime};base64,${buffer.toString('base64')}`
-}
-
-function escapePowerShellSingleQuotes(value) {
-    return value.replace(/'/g, "''")
-}
-
-function createStartupShortcut(shortcutPath, targetFile) {
-    const startupFolder = path.dirname(shortcutPath)
-    fsSync.mkdirSync(startupFolder, { recursive: true })
-
-    const script = [
-        '$WshShell = New-Object -ComObject WScript.Shell',
-        `$Shortcut = $WshShell.CreateShortcut('${escapePowerShellSingleQuotes(shortcutPath)}')`,
-        `$Shortcut.TargetPath = '${escapePowerShellSingleQuotes(targetFile)}'`,
-        `$Shortcut.WorkingDirectory = '${escapePowerShellSingleQuotes(path.dirname(targetFile))}'`,
-        '$Shortcut.Save()'
-    ].join('; ')
-
-    execFileSync('powershell.exe', [
-        '-NoProfile',
-        '-NonInteractive',
-        '-ExecutionPolicy',
-        'Bypass',
-        '-Command',
-        script
-    ], { stdio: 'pipe' })
-}
-
-app.post('/api/open-startup', (req, res) => {
-    console.log("/api/open-startup");
-
-    const startupFolder = path.join(os.homedir(), 'AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Startup');
-
-    // The 'start' command in Windows opens a folder in File Explorer
-    exec(`start "" "${startupFolder}"`, (error) => {
-        if (error) {
-            console.error('Error opening startup folder:', error);
-            return res.status(500).json({ message: 'Failed to open startup folder.', error: error.message });
-        }
-        res.json({ message: 'Startup folder opened successfully.' });
-    });
-});
-
-app.get('/api/detect-startup', (req, res) => {
-
-    const shortcutName = 'Articles Media smartctl-react-ui.lnk';
-    const startupFolder = path.join(os.homedir(), 'AppData', 'Roaming', 'Microsoft', 'Windows', 'Start Menu', 'Programs', 'Startup');
-
-    const shortcutPath = path.join(startupFolder, shortcutName);
-
-    // Check if the shortcut exists
-    const isEnabled = fsSync.existsSync(shortcutPath);
-
-    res.json({
-        enabled: isEnabled,
-        message: isEnabled ? 'Startup is currently enabled.' : 'Startup is currently disabled.'
-    });
-
-});
-
-app.post('/api/toggle-startup', async (req, res) => {
-
-    console.log("/api/toggle-startup");
-
-    const targetFile = path.resolve(__dirname, '..', '_install.bat'); // Path to your target file
-    const shortcutName = 'Articles Media smartctl-react-ui.lnk';
-    const startupFolder = path.join(os.homedir(), 'AppData', 'Roaming', 'Microsoft', 'Windows', 'Start Menu', 'Programs', 'Startup');
-    const shortcutPath = path.join(startupFolder, shortcutName);
-
-    try {
-        if (fsSync.existsSync(shortcutPath)) {
-            fsSync.unlinkSync(shortcutPath);
-            res.json({ message: 'Startup disabled (shortcut removed).', enabled: false });
-        } else {
-            createStartupShortcut(shortcutPath, targetFile);
-
-            if (!fsSync.existsSync(shortcutPath)) {
-                throw new Error(`Shortcut was not created at ${shortcutPath}`);
-            }
-
-            res.json({ message: 'Startup enabled (shortcut created).', enabled: true });
-        }
-    } catch (error) {
-        console.error('Error toggling startup:', error);
-        res.status(500).json({ message: 'Failed to toggle startup.', error: error.message });
-    }
-
-})
 
 app.get('/api/config', async (req, res) => {
     try {
