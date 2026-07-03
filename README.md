@@ -61,4 +61,4 @@ For detailed installation instructions and system requirements, visit the [insta
 
 ## 🛣️ Roadmap
 
-- TODO
+- Add nickname feature to drives

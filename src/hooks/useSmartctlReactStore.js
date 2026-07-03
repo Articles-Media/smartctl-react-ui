@@ -52,6 +52,12 @@ const useSmartctlReactStore = create()(
             })
         },
 
+        drives: [],
+        setDrives: (drives) => set({ drives }),
+
+        lastDrivesFetchTime: null,
+        setLastDrivesFetchTime: (time) => set({ lastDrivesFetchTime: time }),
+
     }),
     {
       name: 'articles-media-power-toys-store',

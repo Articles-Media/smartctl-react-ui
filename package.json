@@ -1,7 +1,7 @@
 {
   "name": "articles-smartctl-react-ui",
   "description": "Articles Media Smartctl React UI allows easy usage and tracking of smartctl commands via a minimal React Vite web app.",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "private": true,
   "scripts": {
     "dev": "concurrently \"node server.js\" \"vite\"",

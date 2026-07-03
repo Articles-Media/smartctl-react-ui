@@ -11,7 +11,7 @@ const startupRouter = require('./routes/startup')
 app.use('/api', startupRouter)
 
 const smartctlRouter = require('./routes/smartctl')
-app.use('/api', smartctlRouter)
+app.use('/api/smartctl', smartctlRouter)
 
 const rootPath = path.join(__dirname, '..')
 const configPath = path.join(__dirname, 'config.js')

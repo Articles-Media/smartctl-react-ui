@@ -5,22 +5,12 @@ export default function SmartctlPanel({
 
 }) {
 
-    function toggleStartup() {
-        fetch('/api/toggle-startup', { method: 'POST' })
-            .then((r) => r.json())
-            .then((data) => {
+    const drives = useSmartctlReactStore((state) => state.drives)
+    const setDrives = useSmartctlReactStore((state) => state.setDrives)
+    const lastDrivesFetchTime = useSmartctlReactStore((state) => state.lastDrivesFetchTime)
+    const setLastDrivesFetchTime = useSmartctlReactStore((state) => state.setLastDrivesFetchTime)
 
-                console.log(data)
-
-                checkStartup()
-
-            })
-            .catch((e) => {
-                alert('Uninstallation failed: ' + e.message)
-            })
-    }
-
-    function checkStartup(startup) {
+    function checkInstalled(startup) {
 
         if (startup && enabledCheck.current) {
             return
@@ -28,12 +18,12 @@ export default function SmartctlPanel({
 
         enabledCheck.current = true
 
-        fetch('/api/detect-startup', { method: 'GET' })
+        fetch('/api/smartctl/check-install', { method: 'GET' })
             .then((r) => r.json())
             .then((data) => {
                 console.log(data)
 
-                if (data.enabled) {
+                if (data.installed) {
                     setEnabled(true)
                 } else {
                     setEnabled(false)
@@ -41,13 +31,13 @@ export default function SmartctlPanel({
 
             })
             .catch((e) => {
-                alert('Failed to detect startup: ' + e.message)
+                alert('Failed to detect installation: ' + e.message)
             })
 
     }
 
     function openStartup(startup) {
-        fetch('/api/open-folder', { method: 'POST' })
+        fetch('/api/smartctl/open-folder', { method: 'POST' })
             .then((r) => r.json())
             .then((data) => {
                 console.log(data)
@@ -57,11 +47,35 @@ export default function SmartctlPanel({
             })
     }
 
+    function fetchDrives(startup) {
+        fetch('/api/smartctl/drives', { method: 'GET' })
+            .then((r) => r.json())
+            .then((data) => {
+                console.log(data)
+                setDrives(data.drives)
+                setLastDrivesFetchTime(Date.now())
+            })
+            .catch((e) => {
+                alert('Failed to fetch drives: ' + e.message)
+            })
+    }
+
+    function driveQuickScan(driveId, driveIndex) {
+        fetch(`/api/smartctl/quick-scan?driveIndex=${encodeURIComponent(driveIndex)}`, { method: 'GET' })
+            .then((r) => r.json())
+            .then((data) => {
+                console.log(data)
+            })
+            .catch((e) => {
+                alert('Failed to fetch drives: ' + e.message)
+            })
+    }
+
     const enabledCheck = useRef()
     const [enabled, setEnabled] = useState(false)
 
     useEffect(() => {
-        // checkStartup(true)
+        checkInstalled(true)
     }, [])
 
     return (
@@ -81,15 +95,43 @@ export default function SmartctlPanel({
                     textDecoration: 'underline',
                     cursor: 'pointer'
                 }}
-            >
-                📂
+            >                
                 {enabled ?
-                    <strong>Detected Installation!</strong>
+                    <strong>✅ Detected Installation!</strong>
                     :
-                    <strong>Missing Installation!</strong>
+                    <strong>❌ Missing Installation!</strong>
                 }
 
             </p>
+
+            {drives.length > 0 && (
+                <div>
+                    <h3 className="" style={{ marginBottom: 10 }}>
+                        Detected Drives:
+                    </h3>
+                    <ul style={{ marginTop: 5, marginBottom: 20 }}>
+                        {drives.map((drive) => (
+                            <li key={drive} style={{ marginBottom: 10 }}>
+                                <div>{drive}</div>
+                                <button
+                                    onClick={() => {
+                                        driveQuickScan(drive, drives.indexOf(drive))
+                                    }}
+                                >
+                                    Quick Scan
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        // toggleStartup()
+                                    }}
+                                >
+                                    Full Scan
+                                </button>
+                            </li>
+                        ))}
+                    </ul>
+                </div>
+            )}
 
             <div
                 style={{
@@ -105,20 +147,20 @@ export default function SmartctlPanel({
                             // toggleStartup()
                         }}
                     >
-                        Quick Scan
+                        Quick Scan All
                     </button>
                     <button
                         onClick={() => {
                             // toggleStartup()
                         }}
                     >
-                        Full Scan
+                        Full Scan All
                     </button>
                 </div>
 
                 <button
                     onClick={() => {
-                        checkStartup()
+                        fetchDrives()
                     }}
                 >
                     Check

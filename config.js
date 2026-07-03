@@ -1,6 +1,6 @@
 const config = {
     "smartctl": {
-        "smartctlPath": "C:/Program Files/smartmontools/smartctl.exe",
+        "smartctlPath": "C:/Program Files/smartmontools/bin/smartctl.exe",
     },
 }
 

@@ -84,12 +84,11 @@ export default function AutoStart({
                     textDecoration: 'underline',
                     cursor: 'pointer'
                 }}
-            >
-                📂
+            >                
                 {enabled ?
-                    <strong>Detected Installation!</strong>
+                    <strong>✅ Detected Auto Start!</strong>
                     :
-                    <strong>Missing Installation!</strong>
+                    <strong>❌ Missing Auto Start!</strong>
                 }
 
             </p>
