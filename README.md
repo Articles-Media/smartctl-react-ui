@@ -8,7 +8,7 @@
   <span>Articles Media Smartctl React UI</span>
 </h1>
 <p align="center">
-  <span align="center">Similar to Microsoft PowerToys, Articles Media PowerToys allows easy creation, installation, and management of added Windows features and utilities with JavaScript. Primarily through the context menu.</span>
+  <span align="center">Articles Media Smartctl React UI allows easy usage and tracking of smartctl commands via a minimal React Vite web app.</span>
 </p>
 <h3 align="center">
   <a href="./installation.md">Installation</a>
@@ -23,39 +23,37 @@
 Articles Media PowerToys includes no useful built in utilities, add more by installing extensions from your favorite apps and creators. The following extensions are installed by default but not enabled!
 
 <details>
-  <summary><i>Articles Blender</i></summary>
-  <span>Uses Blender to create thumbnails for 3D models from the context menu.</span>
+  <summary><i>Scheduled Scans</i></summary>
+  <span>Setup auto start and scheduled scans all from a easy to use UI.</span>
 </details>
 
 <br/>
 
 <details>
-  <summary><i>Articles Sharp</i></summary>
-  <span>Uses sharp to quickly allow image conversions and optimization via the context menu.</span>
+  <summary><i>Report History</i></summary>
+  <span>Saves important SMART statistics and provides easy to read key usage metrics. Charts available once enough reports have been ran.</span>
 </details>
 
 <br/>
 
 <details>
-  <summary><i>Articles GLTFJSX</i></summary>
-  <span>Transform glb and gltf to react-three-fiber ready files just by shift right clicking a model! Uses the NPM gltfjsx package!</span>
+  <summary><i>Easily Customizable</i></summary>
+  <span>Uses a modern React Vite web app stack to allow fast updates and a familiar dev environment.</span>
+</details>
+
+<br/>
+
+<details>
+  <summary><i>External API & Webhook Support</i></summary>
+  <span>Ability to send captured metrics via configured webhooks.</span>
 </details>
 
 ## 📦 Preview Photos
 
-Not much at the moment
+Preview of the softwares UI.
 
 ![Preview](./images/readme/preview.webp)
 UI Landing Page
-
-![Convert Image Preview](./images/readme/convert-image-example.webp)
-Articles Sharp extension commands.
-
-![Command Line Questions Preview](./images/readme/cmd-rl-example.webp)
-Further customization via command line questions.
-
-![Multiple Commands Preview](./images/readme/3d-model-commands.webp)
-Articles Blender & GLTFJSX extensions adding commands for 3D models.
 
 ## 📦 Installation
 
@@ -63,5 +61,4 @@ For detailed installation instructions and system requirements, visit the [insta
 
 ## 🛣️ Roadmap
 
-- More built in extensions
-- Allow extensions to target folders and normal context menu without shift
+- TODO
