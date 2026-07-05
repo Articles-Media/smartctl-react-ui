@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import useSmartctlReactStore from "../hooks/useSmartctlReactStore"
+import DrivesList from "./DrivesList"
 
 export default function SmartctlPanel({
 
@@ -7,6 +8,12 @@ export default function SmartctlPanel({
 
     const drives = useSmartctlReactStore((state) => state.drives)
     const setDrives = useSmartctlReactStore((state) => state.setDrives)
+
+    const reports = useSmartctlReactStore((state) => state.reports)
+    const setReports = useSmartctlReactStore((state) => state.setReports)
+
+    const setStorage = useSmartctlReactStore((state) => state.setStorage)
+
     const lastDrivesFetchTime = useSmartctlReactStore((state) => state.lastDrivesFetchTime)
     const setLastDrivesFetchTime = useSmartctlReactStore((state) => state.setLastDrivesFetchTime)
 
@@ -36,14 +43,25 @@ export default function SmartctlPanel({
 
     }
 
-    function openStartup(startup) {
-        fetch('/api/smartctl/open-folder', { method: 'POST' })
+    function openSmartmontoolsFolder(startup) {
+        fetch('/api/smartctl/open-smartmontools-folder', { method: 'POST' })
             .then((r) => r.json())
             .then((data) => {
                 console.log(data)
             })
             .catch((e) => {
-                alert('Failed to open folder: ' + e.message)
+                alert('Failed to open smartmontools folder: ' + e.message)
+            })
+    }
+
+    function openReportsFolder(startup) {
+        fetch('/api/smartctl/open-reports-folder', { method: 'POST' })
+            .then((r) => r.json())
+            .then((data) => {
+                console.log(data)
+            })
+            .catch((e) => {
+                alert('Failed to open reports folder: ' + e.message)
             })
     }
 
@@ -53,10 +71,24 @@ export default function SmartctlPanel({
             .then((data) => {
                 console.log(data)
                 setDrives(data.drives)
+                setStorage(data.storage)
                 setLastDrivesFetchTime(Date.now())
+                fetchReports()
             })
             .catch((e) => {
                 alert('Failed to fetch drives: ' + e.message)
+            })
+    }
+
+    function fetchReports(startup) {
+        fetch('/api/smartctl/reports', { method: 'GET' })
+            .then((r) => r.json())
+            .then((data) => {
+                console.log(data)
+                setReports(data.reports)
+            })
+            .catch((e) => {
+                alert('Failed to fetch reports: ' + e.message)
             })
     }
 
@@ -87,49 +119,51 @@ export default function SmartctlPanel({
         >
             <h2>Smartctl Tools</h2>
 
-            <p
-                onClick={() => {
-                    openStartup()
-                }}
+            <div
                 style={{
-                    textDecoration: 'underline',
-                    cursor: 'pointer'
+                    display: 'flex',
+                    // justifyContent: 'space-between',
+                    alignItems: 'center',
+                    gap: 20,
                 }}
-            >                
-                {enabled ?
-                    <strong>✅ Detected Installation!</strong>
-                    :
-                    <strong>❌ Missing Installation!</strong>
-                }
+            >
+                <div
+                    onClick={() => {
+                        openSmartmontoolsFolder()
+                    }}
+                    style={{
+                        textDecoration: 'underline',
+                        cursor: 'pointer'
+                    }}
+                >
+                    {enabled ?
+                        <strong>✅ Detected Installation!</strong>
+                        :
+                        <strong>❌ Missing Installation!</strong>
+                    }
 
-            </p>
+                </div>
+
+                <div
+                    onClick={() => {
+                        openReportsFolder()
+                    }}
+                    style={{
+                        textDecoration: 'underline',
+                        cursor: 'pointer'
+                    }}
+                >
+                    📃 {reports.length || 0} Reports Found
+                </div>
+
+            </div>
 
             {drives.length > 0 && (
                 <div>
                     <h3 className="" style={{ marginBottom: 10 }}>
                         Detected Drives:
                     </h3>
-                    <ul style={{ marginTop: 5, marginBottom: 20 }}>
-                        {drives.map((drive) => (
-                            <li key={drive} style={{ marginBottom: 10 }}>
-                                <div>{drive}</div>
-                                <button
-                                    onClick={() => {
-                                        driveQuickScan(drive, drives.indexOf(drive))
-                                    }}
-                                >
-                                    Quick Scan
-                                </button>
-                                <button
-                                    onClick={() => {
-                                        // toggleStartup()
-                                    }}
-                                >
-                                    Full Scan
-                                </button>
-                            </li>
-                        ))}
-                    </ul>
+                    <DrivesList />
                 </div>
             )}
 

@@ -55,6 +55,13 @@ const useSmartctlReactStore = create()(
         drives: [],
         setDrives: (drives) => set({ drives }),
 
+        // Info that smartctl does not capture on its own, but is useful for the UI.
+        storage: [],
+        setStorage: (storage) => set({ storage }),
+
+        reports: [],
+        setReports: (reports) => set({ reports }),
+
         lastDrivesFetchTime: null,
         setLastDrivesFetchTime: (time) => set({ lastDrivesFetchTime: time }),
 

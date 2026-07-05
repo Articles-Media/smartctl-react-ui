@@ -13,6 +13,8 @@
 # testing
 /coverage
 
+/saved_reports
+
 # nested UI project needed ignores
 /ui/node_modules
 

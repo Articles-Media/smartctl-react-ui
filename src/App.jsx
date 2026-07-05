@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react'
-import ExtensionsList from './components/ExtensionsList'
-import ContextMenuCommandsInstaller from './components/ContextMenuCommandsInstaller'
+
 import ConfigEditor from './components/ConfigEditor'
 import useSmartctlReactStore from './hooks/useSmartctlReactStore'
+
 import AutoStart from './components/AutoStart'
 import SmartctlPanel from './components/SmartctlPanel'
+import SchedulePanel from './components/SchedulePanel'
 
 export default function App() {
 
@@ -61,6 +62,8 @@ export default function App() {
                     <AutoStart />
 
                     <SmartctlPanel />
+
+                    {/* <SchedulePanel /> */}
 
                     <ConfigEditor
                         content={content}

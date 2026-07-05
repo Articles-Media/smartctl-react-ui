@@ -4,6 +4,8 @@ const fsSync = require('fs');
 const path = require('path');
 const os = require('os');
 const { execFileSync, exec, execFile } = require('child_process');
+const util = require('util');
+const execPromise = util.promisify(exec);
 
 function escapePowerShellSingleQuotes(value) {
     return value.replace(/'/g, "''")
@@ -31,19 +33,35 @@ function createStartupShortcut(shortcutPath, targetFile) {
     ], { stdio: 'pipe' })
 }
 
-router.post('/open-folder', (req, res) => {
-    console.log("/api/open-folder");
+router.post('/open-smartmontools-folder', (req, res) => {
+    console.log("/api/open-smartmontools-folder");
 
-    const startupFolder = path.join('C:', 'Program Files', 'smartmontools');
+    const smartmontoolsFolder = path.join('C:', 'Program Files', 'smartmontools');
 
     // The 'start' command in Windows opens a folder in File Explorer
-    exec(`start "" "${startupFolder}"`, (error) => {
+    exec(`start "" "${smartmontoolsFolder}"`, (error) => {
         if (error) {
-            console.error('Error opening startup folder:', error);
-            return res.status(500).json({ message: 'Failed to open startup folder.', error: error.message });
+            console.error('Error opening smartmontools folder:', error);
+            return res.status(500).json({ message: 'Failed to open smartmontools folder.', error: error.message });
         }
-        res.json({ message: 'Startup folder opened successfully.' });
+        res.json({ message: 'smartmontools folder opened successfully.' });
     });
+});
+
+router.post('/open-reports-folder', (req, res) => {
+    console.log("/api/open-reports-folder");
+
+    const reportsFolder = path.join('saved_reports');
+
+    // The 'start' command in Windows opens a folder in File Explorer
+    exec(`start "" "${reportsFolder}"`, (error) => {
+        if (error) {
+            console.error('Error opening reports folder:', error);
+            return res.status(500).json({ message: 'Failed to open reports folder.', error: error.message });
+        }
+        res.json({ message: 'Reports folder opened successfully.' });
+    });
+    
 });
 
 router.get('/check-install', async (req, res) => {
@@ -84,70 +102,91 @@ router.get('/check-install', async (req, res) => {
     }
 });
 
-router.get('/drives', (req, res) => {
+router.get('/drives', async (req, res) => {
     console.log("/api/drives");
 
     try {
-        // Since config.js uses ES modules (export default), but server is CommonJS, 
-        // we read the file directly or require the path.
         const configPath = path.join(__dirname, '..', '..', 'config.js');
         const configContent = fsSync.readFileSync(configPath, 'utf8');
 
-        // Simple extraction of smartctlPath from the string content of config.js
         const pathMatch = configContent.match(/"smartctlPath":\s*"([^"]+)"/);
         const smartctlPath = pathMatch ? pathMatch[1] : 'C:/Program Files/smartmontools/bin/smartctl.exe';
 
-        exec(`"${smartctlPath}" --scan`, (error, stdout, stderr) => {
-            if (error) {
-                console.error(`Error executing smartctl: ${error}`);
-                return res.status(500).json({ error: 'Failed to scan drives', details: error.message });
+        // 1. Run --scan to get the list of devices
+        const { stdout: scanStdout } = await execPromise(`"${smartctlPath}" --scan`);
+
+        // Parse paths (e.g., "/dev/sda -d ata # ..." becomes "/dev/sda")
+        const drivePaths = scanStdout.split('\n')
+            .map(line => line.trim())
+            .filter(line => line.length > 0 && !line.startsWith('#'))
+            .map(line => line);
+        // .map(line => line.split(' ')[0]); 
+
+        // 2. Run -i concurrently for each discovered drive to fetch detailed info
+        const driveDetailsPromises = drivePaths.map(async (drivePath, driveIndex) => {
+            try {
+                const strippedDrivePath = drivePath.split(' ')[0]; // e.g., "/dev/pd0"
+
+                // This splits "/dev/pd0" and takes the last part -> "pd0"
+                const diskId = strippedDrivePath.split('/').pop();
+
+                const { stdout: infoStdout } = await execPromise(`"${smartctlPath}" -i ${strippedDrivePath}`);
+
+                const modelFamilyMatch = infoStdout.match(/Model Family:\s+(.*)/i);
+                const modelNameMatch = infoStdout.match(/(?:Device Model|Model Number):\s+(.*)/i);
+                const serialNumberMatch = infoStdout.match(/Serial Number:\s+(.*)/i);
+
+                return {
+                    path: drivePath,
+                    disk_id: diskId,
+                    disk_index: `/dev/pd${driveIndex}`,
+                    model_family: modelFamilyMatch ? modelFamilyMatch[1].trim() : null,
+                    model_name: modelNameMatch ? modelNameMatch[1].trim() : null,
+                    serial_number: serialNumberMatch ? serialNumberMatch[1].trim() : null
+                };
+            } catch (err) {
+                console.error(`Error fetching info for ${drivePath}:`, err.message);
+                return {
+                    path: drivePath,
+                    error: 'Failed to retrieve detailed info'
+                };
             }
-
-            // Basic parsing of --scan output (usually lines like "/dev/sda -d ata # ...")
-            const drives = stdout.split('\n')
-                .map(line => line.trim())
-                .filter(line => line.length > 0);
-
-            res.json({
-                drives: drives,
-                message: 'Drives fetched successfully.'
-            });
         });
-    } catch (err) {
-        console.error('Error fetching drives:', err);
-        res.status(500).json({ error: 'Server error', details: err.message });
-    }
-});
 
-router.get('/drives', (req, res) => {
-    console.log("/api/drives");
+        // Wait for all the individual drive queries to finish
+        const drives = await Promise.all(driveDetailsPromises);
 
-    try {
-        // Since config.js uses ES modules (export default), but server is CommonJS, 
-        // we read the file directly or require the path.
-        const configPath = path.join(__dirname, '..', '..', 'config.js');
-        const configContent = fsSync.readFileSync(configPath, 'utf8');
+        // 3. Get storage info (Capacity and Free Space) using PowerShell
+        const psCommand = `powershell -NoProfile -Command "$disks = Get-CimInstance Win32_LogicalDisk -Filter 'DriveType=3'; $parts = Get-Partition | Where-Object DriveLetter; $disks | Select-Object DeviceID, VolumeName, Size, FreeSpace, @{Name='DiskNumber';Expression={$letter = $_.DeviceID.Substring(0,1); $p = @($parts | Where-Object DriveLetter -eq $letter)[0]; if ($null -ne $p) { $p.DiskNumber }}} | ConvertTo-Json -Compress"`;
 
-        // Simple extraction of smartctlPath from the string content of config.js
-        const pathMatch = configContent.match(/"smartctlPath":\s*"([^"]+)"/);
-        const smartctlPath = pathMatch ? pathMatch[1] : 'C:/Program Files/smartmontools/bin/smartctl.exe';
+        const { stdout: storageStdout } = await execPromise(psCommand);
+        let storageInfo = [];
+        if (storageStdout.trim()) {
+            const parsedStorage = JSON.parse(storageStdout);
 
-        exec(`"${smartctlPath}" --scan`, (error, stdout, stderr) => {
-            if (error) {
-                console.error(`Error executing smartctl: ${error}`);
-                return res.status(500).json({ error: 'Failed to scan drives', details: error.message });
-            }
+            // Ensure it's an array and filter out nulls
+            const rawStorage = (Array.isArray(parsedStorage) ? parsedStorage : [parsedStorage]).filter(Boolean);
 
-            // Basic parsing of --scan output (usually lines like "/dev/sda -d ata # ...")
-            const drives = stdout.split('\n')
-                .map(line => line.trim())
-                .filter(line => line.length > 0);
+            storageInfo = rawStorage.map(drive => {
+                // Map the DiskNumber to the path smartctl expects on Windows.
+                if (drive.DiskNumber !== null && drive.DiskNumber !== undefined) {
+                    // '/dev/pd0' maps to PhysicalDrive0 in Windows smartmontools
+                    drive.SmartctlPath = `/dev/pd${drive.DiskNumber}`;
 
-            res.json({
-                drives: drives,
-                message: 'Drives fetched successfully.'
+                    // Alternatively, if you are using raw win32 calls elsewhere:
+                    // drive.Win32Path = `\\\\.\\PhysicalDrive${drive.DiskNumber}`;
+                }
+                return drive;
             });
+        }
+
+        res.json({
+            drivePaths: drivePaths,
+            drives: drives,
+            storage: storageInfo,
+            message: 'Drives fetched successfully.'
         });
+
     } catch (err) {
         console.error('Error fetching drives:', err);
         res.status(500).json({ error: 'Server error', details: err.message });
@@ -199,10 +238,25 @@ router.get('/quick-scan', (req, res) => {
                     }
                 }
 
+                // Save the report to a JSON file
+                const serialNumber = parsedData.serial_number || 'Unknown';
+                const date = new Date().toISOString().split('T')[0]; // yyyy-mm-dd
+                const reportFilename = `${date}-${serialNumber}.json`;
+                const rootDir = process.cwd();
+                const reportsDir = path.join(rootDir, 'saved_reports');
+
+                if (!fsSync.existsSync(reportsDir)) {
+                    fsSync.mkdirSync(reportsDir, { recursive: true });
+                }
+
+                const reportPath = path.join(reportsDir, reportFilename);
+                fsSync.writeFileSync(reportPath, JSON.stringify(parsedData, null, 2));
+
                 // 3. Return the rich, human-readable JSON back to the client
                 res.json({
                     success: true,
                     drive: targetDrive,
+                    saved_report: reportFilename,
                     device_info: {
                         model: parsedData.model_name || 'Unknown',
                         serial_number: parsedData.serial_number || 'Unknown',
@@ -211,14 +265,14 @@ router.get('/quick-scan', (req, res) => {
                     },
                     health_status: parsedData.smart_status?.passed ? "PASSED" : "FAILED/UNKNOWN",
                     attributes: parsedData.ata_smart_attributes?.table || [],
-                    raw_smartctl_data: parsedData 
+                    raw_smartctl_data: parsedData
                 });
 
             } catch (parseError) {
                 console.error(`Failed to parse smartctl JSON output. Raw output: ${stdout}`);
-                return res.status(500).json({ 
-                    error: 'Failed to read drive data', 
-                    details: 'smartctl did not return valid JSON' 
+                return res.status(500).json({
+                    error: 'Failed to read drive data',
+                    details: 'smartctl did not return valid JSON'
                 });
             }
         });
@@ -226,6 +280,41 @@ router.get('/quick-scan', (req, res) => {
         console.error('Error executing quick scan:', err);
         res.status(500).json({ error: 'Server error', details: err.message });
     }
+});
+
+router.get('/reports', (req, res) => {
+    console.log("/api/reports");
+
+    const rootDir = process.cwd();
+    const reportsDir = path.join(rootDir, 'saved_reports');
+
+    if (!fsSync.existsSync(reportsDir)) {
+        return res.json({ reports: [] });
+    }
+
+    const reportFiles = fsSync.readdirSync(reportsDir)
+        .filter(file => file.endsWith('.json'))
+        .map(file => {
+            const filePath = path.join(reportsDir, file);
+            const stats = fsSync.statSync(filePath);
+
+            let fileContent = {};
+            try {
+                fileContent = JSON.parse(fsSync.readFileSync(filePath, 'utf8'));
+            } catch (err) {
+                console.error(`Failed to parse report ${file}:`, err.message);
+            }
+
+            return {
+                ...fileContent,
+                fileContent,
+                filename: file,
+                created_at: stats.birthtime,
+                updated_at: stats.mtime
+            };
+        });
+
+    res.json({ reports: reportFiles });
 });
 
 module.exports = router;
