@@ -58,12 +58,23 @@ export default function DrivesList({ }) {
         return reportObj?.ata_smart_attributes?.table?.find((attr) => attr.id === id)
     }
 
+    function driveQuickScan(driveId, driveIndex) {
+        fetch(`/api/smartctl/quick-scan?driveIndex=${encodeURIComponent(driveIndex)}`, { method: 'GET' })
+            .then((r) => r.json())
+            .then((data) => {
+                console.log(data)
+            })
+            .catch((e) => {
+                alert('Failed to fetch drives: ' + e.message)
+            })
+    }
+
     return (
         <ul style={{ marginTop: 5, marginBottom: 20 }}>
             {drives.map((drive) => {
 
                 const foundReports = reports.filter((report) => report.filename.split('-').pop().split('.')[0] === drive.serial_number)
-                
+
                 const latestReportEntry = [...foundReports].sort((a, b) => a.filename.localeCompare(b.filename)).at(-1)
                 const latestReport = parseReportObject(latestReportEntry)
 

@@ -92,17 +92,6 @@ export default function SmartctlPanel({
             })
     }
 
-    function driveQuickScan(driveId, driveIndex) {
-        fetch(`/api/smartctl/quick-scan?driveIndex=${encodeURIComponent(driveIndex)}`, { method: 'GET' })
-            .then((r) => r.json())
-            .then((data) => {
-                console.log(data)
-            })
-            .catch((e) => {
-                alert('Failed to fetch drives: ' + e.message)
-            })
-    }
-
     const enabledCheck = useRef()
     const [enabled, setEnabled] = useState(false)
 
