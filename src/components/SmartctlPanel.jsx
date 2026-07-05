@@ -2,6 +2,8 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import useSmartctlReactStore from "../hooks/useSmartctlReactStore"
 import DrivesList from "./DrivesList"
 
+const installation_url = "https://github.com/smartmontools/smartmontools/releases/download/RELEASE_7_5/smartmontools-7.5.win32-setup.exe"
+
 export default function SmartctlPanel({
 
 }) {
@@ -99,6 +101,15 @@ export default function SmartctlPanel({
         checkInstalled(true)
     }, [])
 
+    function handleInstallSmartmontools() {
+        alert('Opening a new window to download smartmontools via GitHub on a pinned 7.5 release. Using this url: ' + installation_url)
+        window.open(
+            installation_url,
+            '_blank',
+            'noopener,noreferrer'
+        )
+    }
+
     return (
         <div
             className="card"
@@ -111,14 +122,25 @@ export default function SmartctlPanel({
             <div
                 style={{
                     display: 'flex',
+                    flexDirection: 'column',
                     // justifyContent: 'space-between',
-                    alignItems: 'center',
-                    gap: 20,
+                    // alignItems: 'center',
+                    gap: 10,
                 }}
             >
                 <div
                     onClick={() => {
-                        openSmartmontoolsFolder()
+
+                        // TEMP force
+                        handleInstallSmartmontools()
+                        return
+
+                        if (enabled) {
+                            openSmartmontoolsFolder()
+                        } else {
+                            handleInstallSmartmontools()
+                        }
+
                     }}
                     style={{
                         textDecoration: 'underline',
@@ -128,7 +150,18 @@ export default function SmartctlPanel({
                     {enabled ?
                         <strong>✅ Detected Installation!</strong>
                         :
-                        <strong>❌ Missing Installation!</strong>
+                        <div>
+                            <strong>❌ Missing Installation! Click to install.</strong>
+                            <div
+                                style={{
+                                    fontSize: 12,
+                                    marginTop: 4,
+                                    color: '#888'
+                                }}
+                            >
+                                Will install https://github.com/smartmontools/smartmontools/releases/download/RELEASE_7_5/smartmontools-7.5.win32-setup.exe via https://github.com/smartmontools/smartmontools GitHub repository.
+                            </div>
+                        </div>
                     }
 
                 </div>
